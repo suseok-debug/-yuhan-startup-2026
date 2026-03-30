@@ -68,7 +68,7 @@ const STATUS_LABELS = {
 const emptyApp = () => ({
   id: genId(), reviewToken: genId(), status: "draft", currentStep: 0, createdAt: now(), updatedAt: now(),
   profReview: { comment: "", reviewedAt: null },
-  info: { clubName: "", clubIntro: "", itemName: "", itemDesc: "", output: "", stage: "1", repName: "", repDept: "", repId: "", profName: "", profDept: "", profEmail: "", isFusion: false },
+  info: { clubName: "", clubIntro: "", itemName: "", itemDesc: "", output: "", stage: "1", repName: "", repDept: "", repId: "", profName: "", profDept: "", profEmail: "", isFusion: false, consentSelf: false, consentThirdParty: false },
   problem: { motivation: "", background: "", context: "", contextResult: "", marketContext: "" },
   customer: { target: "", painPoint: "", painResult: "", market: "", marketResult: "" },
   solution: { features: "", featureResult: "", devPlan: "", devResult: "" },
@@ -180,6 +180,11 @@ ${stg.items.map(item=>{const b=budgetItems[item.id]||{};return`<tr><td>${item.na
 ${members.map(m=>`<tr><td>${m.name||"-"}</td><td>${m.career||"-"}</td><td>${m.skills||"-"}</td><td>${m.education||"-"}</td></tr>`).join("")}</table>
 <h3 class="sub">5-3. 역할 분담 및 학습 계획</h3>
 <div class="content">${data.team?.roleResult||"(미입력)"}</div>
+<h2 class="section">개인정보 수집·이용 동의 내역</h2>
+<table class="data"><tr><th>동의 항목</th><th>동의 여부</th></tr>
+<tr><td>대표학생 본인 개인정보 수집·이용 동의</td><td style="text-align:center">${info.consentSelf?"✓ 동의":"미동의"}</td></tr>
+<tr><td>팀원 및 지도교수 개인정보 수집·이용 동의 (제3자 정보 대리 제공 확인)</td><td style="text-align:center">${info.consentThirdParty?"✓ 동의":"미동의"}</td></tr>
+</table>
 <div class="footer"><p>유한대학교 일자리지원처 창업지원센터</p><p>신청 ID: ${data.id} | 출력일: ${new Date().toLocaleDateString("ko-KR")}</p></div>
 <div class="no-print"><button onclick="window.print()" style="padding:12px 40px;background:#1B4F8A;color:white;border:none;border-radius:8px;font-size:14px;cursor:pointer;font-weight:bold">🖨️ PDF로 인쇄/저장</button></div>
 </body></html>`;
@@ -237,6 +242,7 @@ function StatusBadge({ status }) {
 // Step 1: 일반 현황
 function StepInfo({ data, update }) {
   const d = data.info||{}; const u=(k,v)=>update("info",{...d,[k]:v});
+  const allConsented = d.consentSelf && d.consentThirdParty;
   return (<div>
     <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6"><p className="text-sm text-blue-700">동아리 기본 정보를 입력합니다. 이 정보는 AI 프롬프트 생성에도 활용됩니다.</p></div>
     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
@@ -251,8 +257,80 @@ function StepInfo({ data, update }) {
       {d.stage==="3"&&<p className="text-xs text-red-500 mt-1 font-medium">⚠ 3단계는 팀원의 최소 50% 이상이 사업자등록 창업자여야 인정됩니다.</p>}
     </Field>
     <Field label="융합 창업동아리 여부" hint="2개 이상 학과 학생으로 구성 시 (지원금 최대 2배)"><label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={d.isFusion||false} onChange={e=>u("isFusion",e.target.checked)} className="w-4 h-4 rounded border-gray-300 text-blue-600"/><span className="text-sm">예, 융합 창업동아리입니다</span></label></Field>
+
+    {/* ★ 개인정보 수집·이용 동의 */}
+    <div className="border-t pt-6 mt-6">
+      <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">🔒 개인정보 수집·이용 동의</h3>
+      <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-4">
+        <p className="text-sm font-bold text-gray-700 mb-2">개인정보 처리방침</p>
+        <div className="bg-white border border-gray-200 rounded-lg p-4 max-h-64 overflow-y-auto text-xs text-gray-600 leading-relaxed space-y-3">
+          <p className="font-bold text-gray-800">[유한대학교 창업지원센터] 창업동아리 사업계획서 접수를 위한 개인정보 수집·이용 동의서</p>
+          <p>유한대학교 일자리지원처 창업지원센터(이하 "창업지원센터")는 「개인정보 보호법」 제15조 및 제17조에 따라 창업동아리 사업계획서 접수 및 운영을 위해 아래와 같이 개인정보를 수집·이용하고자 합니다. 내용을 확인하시고 동의 여부를 결정해주시기 바랍니다.</p>
+
+          <p className="font-bold text-gray-800 mt-3">1. 개인정보 수집·이용 목적</p>
+          <p>- 창업동아리 신청 접수 및 자격 확인<br/>- 사업계획서 심사 및 평가<br/>- 선정 결과 통보 및 활동 지원금 지급<br/>- 창업동아리 활동 관리 및 성과 관리<br/>- 지도교수 검토 요청 및 의견 수렴</p>
+
+          <p className="font-bold text-gray-800 mt-3">2. 수집하는 개인정보 항목</p>
+          <p className="font-bold">가. 대표학생 (정보주체 본인)</p>
+          <p>- 수집 항목: 성명, 학과, 학번<br/>- 수집 근거: 정보주체의 동의 (개인정보 보호법 제15조 제1항 제1호)</p>
+          <p className="font-bold mt-2">나. 팀원 (제3자)</p>
+          <p>- 수집 항목: 성명, 관련 경력/경험, 자격증/보유기술, 창업교육 이수 내역<br/>- 수집 근거: 정보주체의 동의 (개인정보 보호법 제15조 제1항 제1호)<br/>- ※ 대표학생이 팀원의 동의를 받은 후 대리 입력합니다.</p>
+          <p className="font-bold mt-2">다. 지도교수 (제3자)</p>
+          <p>- 수집 항목: 성명, 학과, 이메일 주소<br/>- 수집 근거: 정보주체의 동의 (개인정보 보호법 제15조 제1항 제1호)<br/>- ※ 대표학생이 지도교수의 동의를 받은 후 대리 입력합니다.</p>
+
+          <p className="font-bold text-gray-800 mt-3">3. 개인정보 보유 및 이용 기간</p>
+          <p>- 수집 목적 달성 시까지 (해당 학년도 창업동아리 활동 종료 및 결과 보고 완료 시점)<br/>- 단, 관련 법령에 따른 보존 의무가 있는 경우 해당 기간까지 보존<br/>- 보존 기간: 활동 종료 후 3년 (대학 내부 규정에 따름)</p>
+
+          <p className="font-bold text-gray-800 mt-3">4. 개인정보 제3자 제공</p>
+          <p>- 제공받는 자: 창업동아리 운영위원회 심사위원 (평가 목적)<br/>- 제공 항목: 사업계획서에 포함된 개인정보 일체<br/>- 제공 목적: 사업계획서 심사 및 평가<br/>- 보유 기간: 평가 완료 후 즉시 파기</p>
+
+          <p className="font-bold text-gray-800 mt-3">5. 동의 거부권 및 불이익</p>
+          <p>- 정보주체는 개인정보 수집·이용에 대한 동의를 거부할 권리가 있습니다.<br/>- 다만, 동의를 거부할 경우 창업동아리 신청이 불가합니다.</p>
+
+          <p className="font-bold text-gray-800 mt-3">6. 개인정보 처리 위탁</p>
+          <p>- 위탁업체: Supabase Inc. (데이터베이스 호스팅)<br/>- 위탁 내용: 신청서 데이터 저장 및 관리<br/>- 서버 위치: 아시아 태평양 지역 (Singapore)</p>
+
+          <p className="font-bold text-gray-800 mt-3">7. 정보주체의 권리</p>
+          <p>- 개인정보 열람, 정정·삭제, 처리정지 요구 가능<br/>- 요청처: 유한대학교 일자리지원처 창업지원센터 (02-2610-0425)</p>
+        </div>
+      </div>
+
+      {/* 동의 체크박스 1: 본인(대표학생) */}
+      <div className={`border rounded-xl p-4 mb-3 transition ${d.consentSelf?"border-emerald-300 bg-emerald-50":"border-gray-200 bg-white"}`}>
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input type="checkbox" checked={d.consentSelf||false} onChange={e=>u("consentSelf",e.target.checked)} className="w-5 h-5 mt-0.5 rounded border-gray-300 text-emerald-600 flex-shrink-0"/>
+          <div>
+            <p className="text-sm font-bold text-gray-800">[필수] 대표학생 본인의 개인정보 수집·이용에 동의합니다.</p>
+            <p className="text-xs text-gray-500 mt-1">수집 항목: 성명, 학과, 학번 | 목적: 창업동아리 신청 접수 및 운영</p>
+          </div>
+        </label>
+      </div>
+
+      {/* 동의 체크박스 2: 팀원 및 지도교수 (제3자 정보) */}
+      <div className={`border rounded-xl p-4 mb-3 transition ${d.consentThirdParty?"border-emerald-300 bg-emerald-50":"border-gray-200 bg-white"}`}>
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input type="checkbox" checked={d.consentThirdParty||false} onChange={e=>u("consentThirdParty",e.target.checked)} className="w-5 h-5 mt-0.5 rounded border-gray-300 text-emerald-600 flex-shrink-0"/>
+          <div>
+            <p className="text-sm font-bold text-gray-800">[필수] 팀원 및 지도교수의 개인정보 수집·이용에 동의합니다.</p>
+            <p className="text-xs text-gray-500 mt-1">본인은 아래 정보주체로부터 개인정보 제공에 대한 별도의 동의를 받았음을 확인합니다.</p>
+            <div className="mt-2 text-xs text-gray-500 bg-white/70 rounded-lg p-2.5 space-y-1">
+              <p><span className="font-semibold text-gray-700">팀원:</span> 성명, 관련 경력, 자격증/기술, 교육이수 내역</p>
+              <p><span className="font-semibold text-gray-700">지도교수:</span> 성명, 학과, 이메일 주소</p>
+            </div>
+          </div>
+        </label>
+      </div>
+
+      {!allConsented && <p className="text-xs text-red-500 font-medium mt-2">⚠ 위 두 항목에 모두 동의해야 개인정보 입력 및 다음 단계 진행이 가능합니다.</p>}
+    </div>
+
+    {/* 개인정보 입력 영역: 동의 후에만 표시 */}
+    {allConsented ? (<>
     <div className="border-t pt-5 mt-5"><h3 className="font-bold text-gray-800 mb-4">대표학생 정보</h3><div className="grid grid-cols-1 md:grid-cols-3 gap-x-6"><Field label="이름" required><Input value={d.repName} onChange={v=>u("repName",v)} placeholder="홍길동"/></Field><Field label="학과" required><Input value={d.repDept} onChange={v=>u("repDept",v)} placeholder="컴퓨터공학과"/></Field><Field label="학번" required><Input value={d.repId} onChange={v=>u("repId",v)} placeholder="20260001"/></Field></div></div>
     <div className="border-t pt-5 mt-5"><h3 className="font-bold text-gray-800 mb-4">지도교수 정보</h3><div className="grid grid-cols-1 md:grid-cols-3 gap-x-6"><Field label="이름" required><Input value={d.profName} onChange={v=>u("profName",v)} placeholder="김교수"/></Field><Field label="학과" required><Input value={d.profDept} onChange={v=>u("profDept",v)} placeholder="컴퓨터공학과"/></Field><Field label="이메일" required hint="제출 시 이 이메일로 검토 요청이 발송됩니다"><Input value={d.profEmail} onChange={v=>u("profEmail",v)} placeholder="professor@yuhan.ac.kr" type="email"/></Field></div></div>
+    </>) : (
+    <div className="border-t pt-5 mt-5"><div className="bg-gray-100 rounded-xl p-8 text-center"><span className="text-3xl block mb-3">🔒</span><p className="text-sm text-gray-500 font-medium">개인정보 수집·이용에 동의한 후 정보를 입력할 수 있습니다.</p></div></div>
+    )}
   </div>);
 }
 
@@ -375,7 +453,13 @@ function ApplicantView({ onBack }) {
   const createApp=async()=>{const d=emptyApp();await store.set(`app:${d.id}`,d);const idx=(await store.get("apps-index"))||[];await store.set("apps-index",[...idx,{id:d.id,createdAt:d.createdAt}]);setData(d);setAppId(d.id);setStep(0);setPage("form");setToast("새 신청서가 생성되었습니다!");};
   const saveData=async(nd)=>{setSaving(true);const updated={...nd,updatedAt:now(),currentStep:step};setData(updated);await store.set(`app:${appId}`,updated);setSaving(false);};
   const updateSection=(section,value)=>saveData({...data,[section]:value});
-  const goStep=async(s)=>{await saveData({...data,currentStep:s});setStep(s);window.scrollTo(0,0);};
+  const goStep=async(s)=>{
+    // 1단계에서 다음으로 넘어갈 때 개인정보 동의 확인
+    if(step===0 && s>0 && (!data.info?.consentSelf || !data.info?.consentThirdParty)){
+      alert("개인정보 수집·이용에 동의해야 다음 단계로 진행할 수 있습니다.");return;
+    }
+    await saveData({...data,currentStep:s});setStep(s);window.scrollTo(0,0);
+  };
   const submitForReview=async()=>{
     if(!data.info?.profEmail){alert("지도교수 이메일을 먼저 입력해주세요.");setStep(0);return;}
     if(!window.confirm("지도교수에게 검토를 요청하시겠습니까?"))return;
@@ -548,6 +632,8 @@ function ProfessorView({ appId, token }) {
    ═══════════════════════════════════════ */
 function AdminView({ onBack }) {
   const [apps,setApps]=useState([]);const [loading,setLoading]=useState(true);const [selected,setSelected]=useState(null);const [filter,setFilter]=useState("all");const [toast,setToast]=useState("");
+  const [editing,setEditing]=useState(null); // 편집 중인 신청서 데이터
+  const [editSection,setEditSection]=useState(null); // 편집 중인 섹션 ("info","problem","customer","solution","business","team")
 
   const load=useCallback(async()=>{setLoading(true);const idx=(await store.get("apps-index"))||[];const details=[];for(const item of idx){const d=await store.get(`app:${item.id}`);if(d)details.push(d);}details.sort((a,b)=>new Date(b.updatedAt)-new Date(a.updatedAt));setApps(details);setLoading(false);},[]);
   useEffect(()=>{load();},[load]);
@@ -558,21 +644,165 @@ function AdminView({ onBack }) {
   // 전체 데이터 JSON 백업
   const exportAllData=async()=>{const data=await store.exportAll();const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`yuhan_startup_backup_${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(url);setToast("JSON 백업 파일이 다운로드됩니다.");};
 
+  // ★ 상태 변경
+  const changeStatus=async(app,newStatus)=>{
+    const label=STATUS_LABELS[newStatus]?.label||newStatus;
+    if(!window.confirm(`상태를 "${label}"(으)로 변경하시겠습니까?`))return;
+    const updated={...app,status:newStatus,updatedAt:now()};
+    if(newStatus==="submitted")updated.submittedAt=now();
+    await store.set(`app:${app.id}`,updated);
+    setSelected(updated);setToast(`상태가 "${label}"(으)로 변경되었습니다.`);load();
+  };
+
+  // ★ 삭제
+  const deleteApp=async(app)=>{
+    if(!window.confirm(`⚠ "${app.info?.clubName||"(미입력)"}" 신청서를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`))return;
+    if(!window.confirm("정말 삭제하시겠습니까? 한 번 더 확인합니다."))return;
+    await store.del(`app:${app.id}`);
+    setSelected(null);setEditing(null);setEditSection(null);setToast("신청서가 삭제되었습니다.");load();
+  };
+
+  // ★ 편집 시작
+  const startEdit=(app)=>{setEditing(JSON.parse(JSON.stringify(app)));setEditSection("info");};
+
+  // ★ 편집 중 필드 업데이트
+  const updateEditField=(section,key,value)=>{
+    setEditing(prev=>{
+      const next={...prev};
+      if(typeof key==="string"){next[section]={...next[section],[key]:value};}
+      else{next[section]=value;} // section 전체 교체
+      return next;
+    });
+  };
+
+  // ★ 편집 저장
+  const saveEdit=async()=>{
+    if(!editing)return;
+    const updated={...editing,updatedAt:now()};
+    await store.set(`app:${updated.id}`,updated);
+    setSelected(updated);setEditing(null);setEditSection(null);setToast("수정 사항이 저장되었습니다.");load();
+  };
+
+  // ★ 편집 취소
+  const cancelEdit=()=>{setEditing(null);setEditSection(null);};
+
+  // ── 편집 모드 화면 ──
+  if(editing){
+    const d=editing;
+    const editSections=[
+      {id:"info",label:"일반 현황",icon:"📋"},
+      {id:"problem",label:"창업 동기",icon:"🔍"},
+      {id:"customer",label:"고객/시장",icon:"👥"},
+      {id:"solution",label:"솔루션",icon:"💡"},
+      {id:"business",label:"비즈니스",icon:"📈"},
+      {id:"team",label:"팀 역량",icon:"🤝"},
+    ];
+    return (<div className="min-h-screen bg-gray-50 p-4 sm:p-8"><div className="max-w-4xl mx-auto">
+      <div className="flex items-center justify-between mb-4">
+        <button onClick={cancelEdit} className="text-sm text-gray-500 font-medium">← 편집 취소</button>
+        <button onClick={saveEdit} className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold transition">💾 저장</button>
+      </div>
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+        <p className="text-sm text-amber-800 font-bold">✏️ 편집 모드 — {d.info?.clubName||"(미입력)"}</p>
+        <p className="text-xs text-amber-600 mt-1">수정 후 반드시 "💾 저장" 버튼을 클릭하세요.</p>
+      </div>
+      {/* 섹션 탭 */}
+      <div className="flex overflow-x-auto gap-1 mb-6 pb-2">
+        {editSections.map(s=>(<button key={s.id} onClick={()=>setEditSection(s.id)} className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${editSection===s.id?"bg-amber-500 text-white shadow-md":"bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"}`}><span>{s.icon}</span><span>{s.label}</span></button>))}
+      </div>
+      {/* 일반 현황 편집 */}
+      {editSection==="info"&&<div className="bg-white rounded-2xl shadow-sm border p-6">
+        <h3 className="font-bold text-gray-800 mb-4">📋 일반 현황</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Field label="동아리명"><Input value={d.info?.clubName} onChange={v=>updateEditField("info","clubName",v)}/></Field>
+          <Field label="아이템명"><Input value={d.info?.itemName} onChange={v=>updateEditField("info","itemName",v)}/></Field>
+          <Field label="동아리 소개"><Textarea value={d.info?.clubIntro} onChange={v=>updateEditField("info","clubIntro",v)} rows={2}/></Field>
+          <Field label="아이템 소개"><Textarea value={d.info?.itemDesc} onChange={v=>updateEditField("info","itemDesc",v)} rows={2}/></Field>
+          <Field label="목표 산출물"><Input value={d.info?.output} onChange={v=>updateEditField("info","output",v)}/></Field>
+          <Field label="신청 단계"><Select value={d.info?.stage} onChange={v=>updateEditField("info","stage",v)} options={[{value:"1",label:"1단계"},{value:"2",label:"2단계"},{value:"3",label:"3단계"}]}/></Field>
+          <Field label="대표학생"><Input value={d.info?.repName} onChange={v=>updateEditField("info","repName",v)}/></Field>
+          <Field label="대표학생 학과"><Input value={d.info?.repDept} onChange={v=>updateEditField("info","repDept",v)}/></Field>
+          <Field label="지도교수"><Input value={d.info?.profName} onChange={v=>updateEditField("info","profName",v)}/></Field>
+          <Field label="지도교수 이메일"><Input value={d.info?.profEmail} onChange={v=>updateEditField("info","profEmail",v)}/></Field>
+        </div>
+      </div>}
+      {/* 창업 동기 편집 */}
+      {editSection==="problem"&&<div className="bg-white rounded-2xl shadow-sm border p-6">
+        <h3 className="font-bold text-gray-800 mb-4">🔍 창업 동기 및 문제 발견</h3>
+        <Field label="1-1. 내가 발견한 문제와 창업 동기"><Textarea value={d.problem?.contextResult} onChange={v=>updateEditField("problem","contextResult",v)} rows={8}/></Field>
+        <Field label="1-2. 사회적·시장적 맥락"><Textarea value={d.problem?.marketContext} onChange={v=>updateEditField("problem","marketContext",v)} rows={8}/></Field>
+      </div>}
+      {/* 고객/시장 편집 */}
+      {editSection==="customer"&&<div className="bg-white rounded-2xl shadow-sm border p-6">
+        <h3 className="font-bold text-gray-800 mb-4">👥 고객 이해 및 시장 탐색</h3>
+        <Field label="2-1. 목표 고객 및 Pain Point"><Textarea value={d.customer?.painResult} onChange={v=>updateEditField("customer","painResult",v)} rows={8}/></Field>
+        <Field label="2-2. 시장 규모 및 경쟁"><Textarea value={d.customer?.marketResult} onChange={v=>updateEditField("customer","marketResult",v)} rows={8}/></Field>
+      </div>}
+      {/* 솔루션 편집 */}
+      {editSection==="solution"&&<div className="bg-white rounded-2xl shadow-sm border p-6">
+        <h3 className="font-bold text-gray-800 mb-4">💡 솔루션 및 아이템 구체화</h3>
+        <Field label="3-1. 핵심 기능 및 차별성"><Textarea value={d.solution?.featureResult} onChange={v=>updateEditField("solution","featureResult",v)} rows={8}/></Field>
+        <Field label="3-2. 개발/구체화 계획"><Textarea value={d.solution?.devResult} onChange={v=>updateEditField("solution","devResult",v)} rows={8}/></Field>
+      </div>}
+      {/* 비즈니스 편집 */}
+      {editSection==="business"&&<div className="bg-white rounded-2xl shadow-sm border p-6">
+        <h3 className="font-bold text-gray-800 mb-4">📈 비즈니스 모델 및 성장 전략</h3>
+        <Field label="4-1. 수익 모델 및 마케팅"><Textarea value={d.business?.modelResult} onChange={v=>updateEditField("business","modelResult",v)} rows={8}/></Field>
+        <Field label="4-2. 사업 지속 계획"><Textarea value={d.business?.sustainability} onChange={v=>updateEditField("business","sustainability",v)} rows={4}/></Field>
+      </div>}
+      {/* 팀 역량 편집 */}
+      {editSection==="team"&&<div className="bg-white rounded-2xl shadow-sm border p-6">
+        <h3 className="font-bold text-gray-800 mb-4">🤝 팀 역량 및 학습 계획</h3>
+        <Field label="5-3. 역할 분담 및 학습 계획"><Textarea value={d.team?.roleResult} onChange={v=>updateEditField("team","roleResult",v)} rows={8}/></Field>
+      </div>}
+      {/* 하단 저장 버튼 */}
+      <div className="flex justify-between mt-6 mb-12">
+        <button onClick={cancelEdit} className="px-5 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50">취소</button>
+        <button onClick={saveEdit} className="px-8 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition shadow-lg">💾 저장</button>
+      </div>
+    </div>{toast&&<Toast message={toast} onClose={()=>setToast("")}/>}</div>);
+  }
+
+  // ── 상세 보기 화면 (기존 + 편집/상태변경/삭제 버튼 추가) ──
   if(selected){const a=selected;const stg=STAGE_CONFIG[parseInt(a.info?.stage||"1")];const budgetItems=a.business?.budgetItems||{};const totalBudget=Object.values(budgetItems).reduce((s,b)=>s+(parseInt(b.amount)||0),0);
     return (<div className="min-h-screen bg-gray-50 p-4 sm:p-8"><div className="max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-4"><button onClick={()=>setSelected(null)} className="text-sm text-blue-600 font-medium">← 목록으로</button><button onClick={()=>openPdf(a)} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700">🖨️ PDF 출력</button></div>
+      <div className="flex items-center justify-between mb-4">
+        <button onClick={()=>setSelected(null)} className="text-sm text-blue-600 font-medium">← 목록으로</button>
+        <div className="flex gap-2">
+          <button onClick={()=>startEdit(a)} className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-bold transition">✏️ 편집</button>
+          <button onClick={()=>openPdf(a)} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700">🖨️ PDF</button>
+        </div>
+      </div>
       <div className="bg-white rounded-2xl shadow-sm border p-6 mb-6"><div className="flex justify-between items-start mb-4"><div><h2 className="text-xl font-extrabold text-gray-900">{a.info?.clubName||"(미입력)"}</h2><p className="text-gray-500 text-sm">{a.info?.itemName} — {a.info?.itemDesc}</p></div><StatusBadge status={a.status}/></div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm"><div className="bg-gray-50 rounded-lg p-3"><span className="text-gray-400 text-xs block">대표학생</span><span className="font-semibold">{a.info?.repName}</span></div><div className="bg-gray-50 rounded-lg p-3"><span className="text-gray-400 text-xs block">지도교수</span><span className="font-semibold">{a.info?.profName}</span></div><div className="bg-gray-50 rounded-lg p-3"><span className="text-gray-400 text-xs block">신청단계</span><span className="font-semibold">{a.info?.stage}단계 ({stg?.name})</span></div><div className="bg-gray-50 rounded-lg p-3"><span className="text-gray-400 text-xs block">신청예산</span><span className="font-semibold">{fmt(totalBudget)}원</span></div></div>
-        {parseInt(a.info?.stage)===3&&<div className="mt-3 text-xs"><span className="font-bold">사업자등록증:</span> <span className={a.business?.bizRegFiles?.length?"text-emerald-600 font-bold":"text-red-500"}>{a.business?.bizRegFiles?.length?`${a.business.bizRegFiles.length}건`:"미첨부 ⚠"}</span></div>}</div>
+        {parseInt(a.info?.stage)===3&&<div className="mt-3 text-xs"><span className="font-bold">사업자등록증:</span> <span className={a.business?.bizRegFiles?.length?"text-emerald-600 font-bold":"text-red-500"}>{a.business?.bizRegFiles?.length?`${a.business.bizRegFiles.length}건`:"미첨부 ⚠"}</span></div>}
+        {/* ★ 상태 변경 패널 */}
+        <div className="mt-4 pt-4 border-t">
+          <p className="text-xs text-gray-500 font-bold mb-2">상태 변경</p>
+          <div className="flex flex-wrap gap-2">
+            {[{s:"draft",l:"작성 중"},{s:"pending_review",l:"교수 검토 대기"},{s:"revision",l:"수정 요청"},{s:"submitted",l:"접수 완료"}].map(opt=>(
+              <button key={opt.s} onClick={()=>changeStatus(a,opt.s)} disabled={a.status===opt.s}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${a.status===opt.s?"bg-gray-200 text-gray-400 cursor-not-allowed":"bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"}`}>
+                {opt.l}{a.status===opt.s?" (현재)":""}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
       {[{title:"1. 창업 동기",content:[a.problem?.contextResult,a.problem?.marketContext]},{title:"2. 고객/시장",content:[a.customer?.painResult,a.customer?.marketResult]},{title:"3. 솔루션",content:[a.solution?.featureResult,a.solution?.devResult]},{title:"4. 비즈니스",content:[a.business?.modelResult,a.business?.sustainability]},{title:"5. 팀 역량",content:[a.team?.roleResult]}].map((sec,i)=>(<div key={i} className="bg-white rounded-2xl shadow-sm border p-6 mb-4"><h3 className="font-bold text-gray-800 mb-3">{sec.title}</h3>{sec.content.map((c,j)=>c?<p key={j} className="text-sm text-gray-600 whitespace-pre-wrap mb-3 leading-relaxed">{c}</p>:null)}{sec.content.every(c=>!c)&&<p className="text-sm text-gray-300 italic">미입력</p>}</div>))}
-    </div></div>);}
+      {/* ★ 하단 삭제 버튼 */}
+      <div className="border-t pt-6 mt-6 mb-12">
+        <button onClick={()=>deleteApp(a)} className="px-5 py-2.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 rounded-xl text-sm font-semibold transition">🗑️ 이 신청서 삭제</button>
+      </div>
+    </div>{toast&&<Toast message={toast} onClose={()=>setToast("")}/>}</div>);}
 
+  // ── 목록 화면 ──
   return (<div className="min-h-screen bg-gray-50 p-4 sm:p-8"><div className="max-w-5xl mx-auto">
     <div className="flex items-center justify-between mb-6"><div><button onClick={onBack} className="text-sm text-gray-500 hover:text-gray-700 mb-1">← 메인으로</button><h1 className="text-2xl font-extrabold text-gray-900">📊 관리자 대시보드</h1></div><div className="flex gap-2"><button onClick={exportAllData} className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700">💾 전체 데이터 백업</button><button onClick={load} className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50">🔄 새로고침</button></div></div>
     <div className="grid grid-cols-4 gap-3 mb-6">{[{label:"전체",count:counts.all,bg:"bg-blue-50",tc:"text-blue-600"},{label:"접수완료",count:counts.submitted,bg:"bg-emerald-50",tc:"text-emerald-600"},{label:"교수검토중",count:counts.pending_review,bg:"bg-amber-50",tc:"text-amber-600"},{label:"작성/수정중",count:counts.draft,bg:"bg-gray-50",tc:"text-gray-600"}].map(s=>(<div key={s.label} className={`${s.bg} rounded-xl border p-4 text-center`}><div className={`text-3xl font-extrabold ${s.tc}`}>{s.count}</div><div className="text-xs text-gray-500 mt-1">{s.label}</div></div>))}</div>
     <div className="flex gap-2 mb-4 flex-wrap">{[{v:"all",l:"전체"},{v:"submitted",l:"접수완료"},{v:"pending_review",l:"교수검토중"},{v:"draft",l:"작성중"},{v:"revision",l:"수정요청"}].map(f=>(<button key={f.v} onClick={()=>setFilter(f.v)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${filter===f.v?"bg-blue-600 text-white":"bg-white border text-gray-600 hover:bg-gray-50"}`}>{f.l}</button>))}</div>
-    <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">{loading?<div className="p-12 text-center text-gray-400">불러오는 중...</div>:filtered.length===0?<div className="p-12 text-center text-gray-400">신청서가 없습니다.</div>:(<div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b bg-gray-50 text-gray-500 text-xs"><th className="px-4 py-3 text-left">#</th><th className="px-4 py-3 text-left">동아리명</th><th className="px-4 py-3 text-left">아이템명</th><th className="px-4 py-3 text-left">대표학생</th><th className="px-4 py-3 text-center">단계</th><th className="px-4 py-3 text-center">상태</th><th className="px-4 py-3 text-center">PDF</th><th className="px-4 py-3 text-center">상세</th></tr></thead>
-      <tbody>{filtered.map((a,i)=>(<tr key={a.id} className="border-b border-gray-100 hover:bg-blue-50/30"><td className="px-4 py-3 text-gray-400">{i+1}</td><td className="px-4 py-3 font-semibold">{a.info?.clubName||"-"}</td><td className="px-4 py-3 text-gray-600">{a.info?.itemName||"-"}</td><td className="px-4 py-3 text-gray-600">{a.info?.repName||"-"}</td><td className="px-4 py-3 text-center"><span className="bg-gray-100 px-2 py-0.5 rounded text-xs">{a.info?.stage}단계</span></td><td className="px-4 py-3 text-center"><StatusBadge status={a.status}/></td><td className="px-4 py-3 text-center"><button onClick={()=>openPdf(a)} className="text-blue-600 text-xs font-bold">PDF</button></td><td className="px-4 py-3 text-center"><button onClick={()=>setSelected(a)} className="text-blue-600 text-xs font-bold">보기</button></td></tr>))}</tbody></table></div>)}</div>
+    <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">{loading?<div className="p-12 text-center text-gray-400">불러오는 중...</div>:filtered.length===0?<div className="p-12 text-center text-gray-400">신청서가 없습니다.</div>:(<div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b bg-gray-50 text-gray-500 text-xs"><th className="px-4 py-3 text-left">#</th><th className="px-4 py-3 text-left">동아리명</th><th className="px-4 py-3 text-left">아이템명</th><th className="px-4 py-3 text-left">대표학생</th><th className="px-4 py-3 text-center">단계</th><th className="px-4 py-3 text-center">상태</th><th className="px-4 py-3 text-center">PDF</th><th className="px-4 py-3 text-center">관리</th></tr></thead>
+      <tbody>{filtered.map((a,i)=>(<tr key={a.id} className="border-b border-gray-100 hover:bg-blue-50/30"><td className="px-4 py-3 text-gray-400">{i+1}</td><td className="px-4 py-3 font-semibold">{a.info?.clubName||"-"}</td><td className="px-4 py-3 text-gray-600">{a.info?.itemName||"-"}</td><td className="px-4 py-3 text-gray-600">{a.info?.repName||"-"}</td><td className="px-4 py-3 text-center"><span className="bg-gray-100 px-2 py-0.5 rounded text-xs">{a.info?.stage}단계</span></td><td className="px-4 py-3 text-center"><StatusBadge status={a.status}/></td><td className="px-4 py-3 text-center"><button onClick={()=>openPdf(a)} className="text-blue-600 text-xs font-bold">PDF</button></td><td className="px-4 py-3 text-center"><div className="flex items-center justify-center gap-2"><button onClick={()=>setSelected(a)} className="text-blue-600 text-xs font-bold">보기</button><button onClick={()=>{setSelected(null);startEdit(a);}} className="text-amber-600 text-xs font-bold">편집</button><button onClick={()=>deleteApp(a)} className="text-red-400 text-xs font-bold hover:text-red-600">삭제</button></div></td></tr>))}</tbody></table></div>)}</div>
   </div>{toast&&<Toast message={toast} onClose={()=>setToast("")}/>}</div>);
 }
 
